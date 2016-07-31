@@ -55,7 +55,7 @@ var server = http.createServer(function (req, res) {
     });
 });
 
-server.listen(port);
+server.listen(port, process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1');
 
 console.log(chalk.cyan('Listening on port %s'),port);
 if (debug){
