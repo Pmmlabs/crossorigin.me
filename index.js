@@ -35,7 +35,7 @@ var allowedOriginalHeaders = new RegExp('^' + require('./allowedOriginalHeaders.
         }
     };
 
-var sizeLimit = process.env.SIZE_LIMIT || 2e6; // 2MB - change this to false if you want unlimited file size
+var sizeLimit = process.env.SIZE_LIMIT; // 2MB - change this to false if you want unlimited file size
 
 var server = http.createServer(function (req, res) {
     var d = domain.create();
@@ -106,6 +106,7 @@ var handleOptions = function handleOptions (res, req) {
     }
     opts.method = req.method;
     opts.headers['Content-Type'] = req.headers['content-type'];
+    opts.headers['User-Agent'] = 'vinci';
     opts.followAllRedirects = true;
     opts.body = req;
     return opts;
