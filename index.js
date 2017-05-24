@@ -137,34 +137,39 @@ var handler = function handler(req, res) {
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         res.setHeader('Expires', new Date(Date.now() + 86400000).toUTCString()); // one day in the future
         var options = handleOptions(res, req);
-        var r = request(options);
-        r.pipefilter = function(response, dest) {
-            var size = 0;
-            //var ip;
-            response.on('data', function(chunk){
-                size += chunk.length;
-                if (sizeLimit && size > sizeLimit){
-                    size = errorString('over max');
-                    response.end();
-                }
-            });
-            response.on('end', function(){
-                console.log(normalString('Request for %s, size ' + size + ' bytes'), req.url);
-                /*if (debug){
-                    ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
-                    console.log(chalk.magenta('Originated from ' + req.headers['x-forwarded-for']));
-                }*/
-            });
-            for (var header in response.headers) {
-                if (!allowedOriginalHeaders.test(header)) {
-                    dest.removeHeader(header);
-                }
+        if (req.method == 'OPTIONS') {
+            res.writeHead(200, {'Content-Type': 'text/plain'});
+            res.end('okay');
+        } else {
+            var r = request(options);
+            r.pipefilter = function (response, dest) {
+                var size = 0;
+                //var ip;
+                response.on('data', function (chunk) {
+                    size += chunk.length;
+                    if (sizeLimit && size > sizeLimit) {
+                        size = errorString('over max');
+                        response.end();
+                    }
+                });
+                response.on('end', function () {
+                    console.log(normalString('Request for %s, size ' + size + ' bytes'), req.url);
+                    /*if (debug){
+                     ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
+                     console.log(chalk.magenta('Originated from ' + req.headers['x-forwarded-for']));
+                     }*/
+                });
+                for (var header in response.headers) {
+                    if (!allowedOriginalHeaders.test(header)) {
+                        dest.removeHeader(header);
+                    }
 
-                if (options.flags.gzip === true && header === 'content-encoding') {
-                    dest.setHeader('content-encoding', response.headers[header]);
+                    if (options.flags.gzip === true && header === 'content-encoding') {
+                        dest.setHeader('content-encoding', response.headers[header]);
+                    }
                 }
-            }
-        };
-        r.pipe(res);
+            };
+            r.pipe(res);
+        }
     }
 };
