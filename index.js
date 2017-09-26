@@ -35,7 +35,7 @@ var allowedOriginalHeaders = new RegExp('^' + require('./allowedOriginalHeaders.
         }
     };
 
-var sizeLimit = process.env.SIZE_LIMIT || 2e6; // 2MB - change this to false if you want unlimited file size
+var sizeLimit = process.env.SIZE_LIMIT; // 2MB - change this to false if you want unlimited file size
 
 var server = http.createServer(function (req, res) {
     var d = domain.create();
@@ -55,7 +55,7 @@ var server = http.createServer(function (req, res) {
     });
 });
 
-server.listen(port);
+server.listen(port, process.env.OPENSHIFT_NODEJS_IP || '127.0.0.1');
 
 console.log(chalk.cyan('Listening on port %s'),port);
 if (debug){
@@ -106,6 +106,7 @@ var handleOptions = function handleOptions (res, req) {
     }
     opts.method = req.method;
     opts.headers['Content-Type'] = req.headers['content-type'];
+    opts.headers['User-Agent'] = 'vinci';
     opts.followAllRedirects = true;
     opts.body = req;
     return opts;
@@ -134,37 +135,42 @@ var handler = function handler(req, res) {
         res.setTimeout(25000);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Credentials', false);
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, User-Agent, Test');
         res.setHeader('Expires', new Date(Date.now() + 86400000).toUTCString()); // one day in the future
         var options = handleOptions(res, req);
-        var r = request(options);
-        r.pipefilter = function(response, dest) {
-            var size = 0;
-            //var ip;
-            response.on('data', function(chunk){
-                size += chunk.length;
-                if (sizeLimit && size > sizeLimit){
-                    size = errorString('over max');
-                    response.end();
-                }
-            });
-            response.on('end', function(){
-                console.log(normalString('Request for %s, size ' + size + ' bytes'), req.url);
-                /*if (debug){
-                    ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
-                    console.log(chalk.magenta('Originated from ' + req.headers['x-forwarded-for']));
-                }*/
-            });
-            for (var header in response.headers) {
-                if (!allowedOriginalHeaders.test(header)) {
-                    dest.removeHeader(header);
-                }
+        if (req.method == 'OPTIONS') {
+            res.writeHead(200, {'Content-Type': 'text/plain'});
+            res.end('okay');
+        } else {
+            var r = request(options);
+            r.pipefilter = function (response, dest) {
+                var size = 0;
+                //var ip;
+                response.on('data', function (chunk) {
+                    size += chunk.length;
+                    if (sizeLimit && size > sizeLimit) {
+                        size = errorString('over max');
+                        response.end();
+                    }
+                });
+                response.on('end', function () {
+                    console.log(normalString('Request for %s, size ' + size + ' bytes'), req.url);
+                    /*if (debug){
+                     ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
+                     console.log(chalk.magenta('Originated from ' + req.headers['x-forwarded-for']));
+                     }*/
+                });
+                for (var header in response.headers) {
+                    if (!allowedOriginalHeaders.test(header)) {
+                        dest.removeHeader(header);
+                    }
 
-                if (options.flags.gzip === true && header === 'content-encoding') {
-                    dest.setHeader('content-encoding', response.headers[header]);
+                    if (options.flags.gzip === true && header === 'content-encoding') {
+                        dest.setHeader('content-encoding', response.headers[header]);
+                    }
                 }
-            }
-        };
-        r.pipe(res);
+            };
+            r.pipe(res);
+        }
     }
 };
