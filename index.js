@@ -154,7 +154,7 @@ var handler = function handler(req, res) {
                     }
                 });
                 response.on('end', function () {
-                    console.log(normalString('Request for %s (%s), size ' + size + ' bytes'), req.url, req.referrer || req.headers['Referer'] || req.headers['Origin']);
+                    console.log(normalString('Request for %s (%s), size ' + size + ' bytes'), req.url, req.referrer || req.headers['referer'] || req.headers['origin'] || req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress);
                     /*if (debug){
                      ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress ||req.connection.socket.remoteAddress;
                      console.log(chalk.magenta('Originated from ' + req.headers['x-forwarded-for']));
